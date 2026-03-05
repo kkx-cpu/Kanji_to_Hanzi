@@ -1,0 +1,5 @@
+{
+  "name": "日中漢字ナビ (Kanji to Hanzi Learner)",
+  "description": "日本語の漢字を入力すると、対応する中国語（簡体字）の読み方、意味、単語例を大きく見やすいUIで表示する学習アプリです。",
+  "requestFramePermissions": []
+}
