@@ -1,6 +1,32 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+
+async function getAI(): Promise<GoogleGenAI> {
+  if (aiInstance) return aiInstance;
+  
+  let apiKey = process.env.GEMINI_API_KEY;
+  
+  // In production, or if key is missing, fetch the fresh runtime key from the server
+  if (import.meta.env.PROD || !apiKey || apiKey === 'undefined') {
+    try {
+      const res = await fetch('/api/config');
+      const data = await res.json();
+      if (data.GEMINI_API_KEY) {
+        apiKey = data.GEMINI_API_KEY;
+      }
+    } catch (e) {
+      console.error("Failed to fetch config", e);
+    }
+  }
+  
+  if (!apiKey || apiKey === 'undefined') {
+    throw new Error("API key is missing in both build and runtime environments");
+  }
+  
+  aiInstance = new GoogleGenAI({ apiKey });
+  return aiInstance;
+}
 
 export interface HanziInfo {
   japaneseKanji: string;
@@ -15,12 +41,35 @@ export interface HanziInfo {
   }[];
 }
 
-export async function getHanziInfo(kanji: string): Promise<HanziInfo> {
+export async function getPronunciationAudio(text: string): Promise<{data: string, mimeType: string}> {
+  const ai = await getAI();
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-preview-tts",
+    contents: [{ parts: [{ text: text }] }],
+    config: {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: 'Kore' },
+        },
+      },
+    },
+  });
+
+  const inlineData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+  if (!inlineData?.data) {
+    throw new Error("No audio generated");
+  }
+  return { data: inlineData.data, mimeType: inlineData.mimeType || 'audio/wav' };
+}
+
+export async function getHanziInfo(query: string): Promise<HanziInfo> {
+  const ai = await getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3.1-flash-lite-preview",
-    contents: `ユーザーが入力した日本語の漢字「${kanji}」に対応する、または字形が似ている中国語の漢字（簡体字）の情報を教えてください。日本人学習者向けに分かりやすく説明してください。`,
+    contents: `ユーザーが入力した日本語の漢字または単語「${query}」に対応する、または意味が近い中国語（簡体字）の情報を教えてください。日本人学習者向けに分かりやすく説明してください。`,
     config: {
-      systemInstruction: "あなたは日本人が中国語を学ぶのを助ける優秀な中国語教師です。日本語の漢字とそれに対応する中国語の漢字（簡体字）のつながり、発音、意味、そして具体的な単語の例を提示します。",
+      systemInstruction: "あなたは日本人が中国語を学ぶのを助ける優秀な中国語教師です。日本語の漢字・単語とそれに対応する中国語（簡体字）のつながり、発音、意味、そして具体的な単語や例文を提示します。",
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -53,5 +102,18 @@ export async function getHanziInfo(kanji: string): Promise<HanziInfo> {
   if (!text) {
     throw new Error("No response from Gemini");
   }
-  return JSON.parse(text) as HanziInfo;
+  
+  let cleanText = text.trim();
+  if (cleanText.startsWith('```json')) {
+    cleanText = cleanText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+  } else if (cleanText.startsWith('```')) {
+    cleanText = cleanText.replace(/^```\n?/, '').replace(/\n?```$/, '');
+  }
+  
+  try {
+    return JSON.parse(cleanText) as HanziInfo;
+  } catch (e) {
+    console.error("Failed to parse JSON:", cleanText);
+    throw new Error("Invalid JSON response from AI");
+  }
 }
