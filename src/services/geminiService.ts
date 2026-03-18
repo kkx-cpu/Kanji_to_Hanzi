@@ -1,32 +1,6 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-let aiInstance: GoogleGenAI | null = null;
-
-async function getAI(): Promise<GoogleGenAI> {
-  if (aiInstance) return aiInstance;
-  
-  let apiKey = process.env.GEMINI_API_KEY;
-  
-  // In production, or if key is missing, fetch the fresh runtime key from the server
-  if (import.meta.env.PROD || !apiKey || apiKey === 'undefined') {
-    try {
-      const res = await fetch('/api/config');
-      const data = await res.json();
-      if (data.GEMINI_API_KEY) {
-        apiKey = data.GEMINI_API_KEY;
-      }
-    } catch (e) {
-      console.error("Failed to fetch config", e);
-    }
-  }
-  
-  if (!apiKey || apiKey === 'undefined') {
-    throw new Error("API key is missing in both build and runtime environments");
-  }
-  
-  aiInstance = new GoogleGenAI({ apiKey });
-  return aiInstance;
-}
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export interface HanziInfo {
   japaneseKanji: string;
@@ -42,7 +16,6 @@ export interface HanziInfo {
 }
 
 export async function getPronunciationAudio(text: string): Promise<{data: string, mimeType: string}> {
-  const ai = await getAI();
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: text }] }],
@@ -64,7 +37,6 @@ export async function getPronunciationAudio(text: string): Promise<{data: string
 }
 
 export async function getHanziInfo(query: string): Promise<HanziInfo> {
-  const ai = await getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3.1-flash-lite-preview",
     contents: `ユーザーが入力した日本語の漢字または単語「${query}」に対応する、または意味が近い中国語（簡体字）の情報を教えてください。日本人学習者向けに分かりやすく説明してください。`,
