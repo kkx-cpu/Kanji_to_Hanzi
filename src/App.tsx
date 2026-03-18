@@ -134,12 +134,12 @@ export default function App() {
           >
             <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full p-1 bg-gradient-to-tr from-red-100 to-amber-100 shadow-md">
               <img 
-                src="/mamoto.png" 
+                src="/umamoto.png" 
                 alt="馬本先生" 
                 className="w-full h-full object-cover rounded-full border-2 border-white"
                 onError={(e) => {
                   // Fallback placeholder until the user uploads the image
-                  (e.target as HTMLImageElement).src = "https://api.dicebear.com/7.x/avataaars/svg?seed=Mamoto&style=circle";
+                  (e.target as HTMLImageElement).src = "https://api.dicebear.com/7.x/avataaars/svg?seed=Umamoto&style=circle";
                 }}
               />
             </div>
