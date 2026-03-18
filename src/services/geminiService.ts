@@ -1,6 +1,8 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Support both Vercel (import.meta.env.VITE_GEMINI_API_KEY) and AI Studio (process.env.GEMINI_API_KEY)
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+const ai = new GoogleGenAI({ apiKey });
 
 export interface HanziInfo {
   japaneseKanji: string;
