@@ -134,7 +134,7 @@ export default function App() {
           >
             <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full p-1 bg-gradient-to-tr from-red-100 to-amber-100 shadow-md">
               <img 
-                src="/umamoto.png" 
+                src="/umamoto.jpg" 
                 alt="馬本先生" 
                 className="w-full h-full object-cover rounded-full border-2 border-white"
                 onError={(e) => {
